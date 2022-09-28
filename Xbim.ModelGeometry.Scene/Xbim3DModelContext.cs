@@ -503,9 +503,8 @@ namespace Xbim.ModelGeometry.Scene
         static Xbim3DModelContext()
         {
             var timeOut = System.Configuration.ConfigurationManager.AppSettings["BooleanTimeOut"];
-            if (!int.TryParse(timeOut, out int BooleanTimeOutSeconds))
-                BooleanTimeOutSeconds = 60;
-            BooleanTimeOutMilliSeconds = BooleanTimeOutSeconds * 1000;
+            //if (!int.TryParse(timeOut, out int BooleanTimeOutSeconds))
+            BooleanTimeOutMilliSeconds = 600000;
         }
         private readonly IModel _model;
 
@@ -858,6 +857,15 @@ namespace Xbim.ModelGeometry.Scene
 
                     }
                     var boolOp = new XbimProductBooleanInfo(contextHelper, Engine, Model, shapeIdsUsedMoreThanOnce, productShapes, cutTools, projectTools, context, styleId);
+                    //if (boolOp.ProductLabel == 767768)
+                    //{
+                    //    bool b = false;
+                    //    b = true;
+                    //    if (b)
+                    //    {
+                    //        b = false;
+                    //    }
+                    //}
                     openingAndProjectionOps.Add(boolOp);
                 }
             });
@@ -883,6 +891,15 @@ namespace Xbim.ModelGeometry.Scene
                         return;
 
                     elementLabel = openingAndProjectionOp.ProductLabel;
+                    //if (elementLabel == 767768 || elementLabel == 1830899 || elementLabel == 19310)
+                    //{
+                    //    bool b = false;
+                    //    b = true;
+                    //    if (b)
+                    //    {
+                    //        b = false;
+                    //    }
+                    //}
                     var typeId = openingAndProjectionOp.ProductType;
 
                     // determine quality and behaviour for specific geometry
@@ -922,11 +939,11 @@ namespace Xbim.ModelGeometry.Scene
                         IXbimGeometryObjectSet nextGeom;
                         try
                         {
-                            //nextGeom = CutWithTimeOut(elementGeom, openingAndProjectionOp.CutGeometries, precision, BooleanTimeOutMilliSeconds);
-                            nextGeom = elementGeom.Cut(openingAndProjectionOp.CutGeometries, precision);
+                            nextGeom = CutWithTimeOut(elementGeom, openingAndProjectionOp.CutGeometries, precision, BooleanTimeOutMilliSeconds);
                             if (nextGeom.IsValid)
                             {
                                 if (nextGeom.First != null && nextGeom.First.IsValid)
+                                    
                                     elementGeom = nextGeom;
                                 else
                                     LogWarning(_model.Instances[elementLabel],
@@ -955,7 +972,8 @@ namespace Xbim.ModelGeometry.Scene
                             GeometryHash = 0,
                             LOD = XbimLOD.LOD_Unspecified,
                             Format = geomType,
-                            BoundingBox = elementGeom.BoundingBox
+                            BoundingBox = elementGeom.BoundingBox,
+                            Brep = Engine.ToBrep(geom)
                         };
                         var memStream = new MemoryStream(0x4000);
 
@@ -1344,13 +1362,14 @@ namespace Xbim.ModelGeometry.Scene
             // TODO: Verify if this is obsolete
             // var geomCache = new ConcurrentDictionary<int, IXbimGeometryObject>();
             // Model.Tag = geomCache;
+
             ConcurrentDictionary<int, byte> processed = new ConcurrentDictionary<int, byte>();
             try
             {
                 
 
-                //   int c = 0;
-                //contextHelper.ParallelOptions.MaxDegreeOfParallelism = 1;
+             //int c = 0;
+             //contextHelper.ParallelOptions.MaxDegreeOfParallelism = 1;
                 Parallel.ForEach(contextHelper.ProductShapeIds, contextHelper.ParallelOptions, (shapeId) =>
                 {
                     Stopwatch productMeshingTime = new Stopwatch();
@@ -1381,12 +1400,51 @@ namespace Xbim.ModelGeometry.Scene
                     }
                     var isFeatureElementShape = contextHelper.FeatureElementShapeIds.Contains(shapeId);
                     var isVoidedProductShape = contextHelper.VoidedShapeIds.Contains(shapeId);
-
+                    //if (shape.EntityLabel == 63839)
+                    //{
+                    //    ++c;
+                    //}
 
                     // Console.WriteLine(shape.GetType().Name);
+
                     XbimShapeGeometry shapeGeom = null;
                     IXbimGeometryObject geomModel = null;
-                    if (!isFeatureElementShape && !isVoidedProductShape && xbimTessellator.CanMesh(shape)) // if we can mesh the shape directly just do it
+                    bool forceMesh = false;
+                    if (shape.GetType().Name == "IfcTriangulatedFaceSet")
+                    {
+                        return;
+                    }
+
+                    if (shape.GetType().Name == "IfcShellBasedSurfaceModel")
+                    {
+                        var surfModel = shape as IIfcShellBasedSurfaceModel;
+                        foreach (var shell in surfModel.SbsmBoundary)
+                        {
+                            var faceSet = shell as IIfcConnectedFaceSet;
+                            if (faceSet != null)
+                            {
+                                var noFaces = faceSet.CfsFaces.Count();
+                                if (40 < noFaces)
+                                {
+                                    forceMesh = true;
+                                    LogError($"{noFaces} number of faces in : #{shape.EntityLabel}, skip brep creation");
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    else if (shape.GetType().Name == "IfcFacetedBrep")
+                    {
+                        var facetedBrep = shape as IIfcFacetedBrep;
+                        var noFaces = facetedBrep.Outer.CfsFaces.Count;
+                        if (40 < noFaces)
+                        {
+                            forceMesh = true;
+                            LogError($"{noFaces} number of faces in : #{shape.EntityLabel}, skip brep creation");
+                        }
+                    }
+
+                    if (!isFeatureElementShape && !isVoidedProductShape && (xbimTessellator.CanMesh(shape) || forceMesh)) // if we can mesh the shape directly just do it
                     {
                         shapeGeom = xbimTessellator.Mesh(shape);
                     }
@@ -1405,9 +1463,14 @@ namespace Xbim.ModelGeometry.Scene
                             //just mesh the big shape as we have no idea what we shoudl have               
                             shapeGeom = xbimTessellator.Mesh((IIfcRepresentationItem)Model.Instances[faceSetEntityLabel]);
                         }
+                        catch (Exception e)
+                        {
+                            LogError($"Failed to create entitiy: #{shape.EntityLabel}", e);
+                        }
                         if (geomModel != null && geomModel.IsValid)
                         {
                             shapeGeom = Engine.CreateShapeGeometry(geomModel, precision, deflection, deflectionAngle, geomStorageType, _logger);
+                            shapeGeom.Brep = Engine.ToBrep(geomModel);
                             if (isFeatureElementShape)
                             {
                                 var geomSet = geomModel as IXbimGeometryObjectSet;
@@ -1524,34 +1587,45 @@ namespace Xbim.ModelGeometry.Scene
         }
         private IXbimGeometryObjectSet CutWithTimeOut(IXbimGeometryObjectSet elementGeom, IXbimSolidSet cutGeometries, double precision, int booleanTimeOutMilliSeconds)
         {
-            Thread threadToKill = null;
-            Func<IXbimGeometryObjectSet> wrappedAction = () =>
+            IXbimGeometryObjectSet geom = null;
+            if (Task.Run(() => geom = elementGeom.Cut(cutGeometries, precision)).Wait(booleanTimeOutMilliSeconds))
             {
-                try
-                {
-                    threadToKill = Thread.CurrentThread;
-                    return elementGeom.Cut(cutGeometries, precision);
-                }
-                catch (ThreadAbortException)
-                {
-                    _logger.LogWarning("Thread aborted due to timeout");
-                    Thread.ResetAbort();// cancel hard aborting, lets to finish it nicely.
-                    return null;
-                }
-            };
-
-            IAsyncResult result = wrappedAction.BeginInvoke(null, null);
-            if (result.AsyncWaitHandle.WaitOne(booleanTimeOutMilliSeconds))
-            {
-                var res = wrappedAction.EndInvoke(result);
-                result.AsyncWaitHandle.Close();
-                return res;
+                return geom;
             }
             else
             {
-                threadToKill?.Abort();
-                throw new TimeoutException();
+                LogError(elementGeom, "Clipping timed out for entity");
+                return null;
             }
+            //Thread threadToKill = null;
+            //Func<IXbimGeometryObjectSet> wrappedAction = () =>
+            //{
+            //    try
+            //    {
+            //        threadToKill = Thread.CurrentThread;
+            //        return elementGeom.Cut(cutGeometries, precision);
+            //    }
+            //    catch (ThreadAbortException)
+            //    {
+            //        _logger.LogWarning("Thread aborted due to timeout");
+            //        Thread.ResetAbort();// cancel hard aborting, lets to finish it nicely.
+            //        return null;
+            //    }
+            //};
+
+            //IAsyncResult result = wrappedAction.BeginInvoke(null, null);
+            //if (result.AsyncWaitHandle.WaitOne(booleanTimeOutMilliSeconds))
+            //{
+            //    var res = wrappedAction.EndInvoke(result);
+            //    result.AsyncWaitHandle.Close();
+            //    return res;
+            //}
+            //else
+            //{
+            //    threadToKill?.Abort();
+            //    LogError(elementGeom, "Clipping timed out for entity");
+            //    throw new TimeoutException();
+            //}
         }
 
         private void WriteRegionsToStore(IIfcRepresentationContext context, IEnumerable<XbimBBoxClusterElement> elementsToCluster, IGeometryStoreInitialiser txn, XbimMatrix3D WorldCoordinateSystem)

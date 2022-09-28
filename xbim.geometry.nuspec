@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Xbim.Geometry</id>
+    <version>5.2.68</version>
+    <title>xBIM Geometry</title>
+    <authors>xBIM Team</authors>
+    <owners>Steve Lockley, Martin Cerny and XBIM Contributors</owners>
+    <description>Meta pack for geometry</description>
+    <summary>Meta pack for geometry.</summary>
+    <releaseNotes>Novotech build.</releaseNotes>
+    <language>en-GB</language>
+    <tags>BIM IFC IfcXml IfcZip Ifc4 COBie .Net XBIM WexBIM BuildingSmart</tags>
+    <repository type="git" url="https://github.com/novorender/novorender-backend" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.5">
+        <dependency id="Xbim.ModelGeometry.Scene" version="5.2.68" />
+        <dependency id="Xbim.Geometry.Engine.Interop" version="5.2.68" />
+      </group>
+      <group targetFramework=".NETFramework4.6">
+        <dependency id="Xbim.ModelGeometry.Scene" version="5.2.68" />
+        <dependency id="Xbim.Geometry.Engine.Interop" version="5.2.68" />
+      </group>
+      <group targetFramework=".NETFramework4.7">
+        <dependency id="Xbim.ModelGeometry.Scene" version="5.2.68" />
+        <dependency id="Xbim.Geometry.Engine.Interop" version="5.2.68" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Xbim.ModelGeometry.Scene" version="5.2.68" />
+        <dependency id="Xbim.Geometry.Engine.Interop" version="5.2.68" />
+      </group>
+      <group targetFramework=".NETStandard2.1">
+        <dependency id="Xbim.ModelGeometry.Scene" version="5.2.68" />
+        <dependency id="Xbim.Geometry.Engine.Interop" version="5.2.68" />
+      </group>
+      <group targetFramework=".NETCoreApp3.1">
+        <dependency id="Xbim.ModelGeometry.Scene" version="5.2.68" />
+        <dependency id="Xbim.Geometry.Engine.Interop" version="5.2.68" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

@@ -64,6 +64,7 @@ namespace Xbim
 		    IXbimSolidSet^ DoBoolean(IXbimSolidSet^ arguments, BOPAlgo_Operation operation, double tolerance, ILogger^ logger);
 			
 		public:
+			bool _useBoundingBoxesToCut = false;
 
 #pragma region destructors
 

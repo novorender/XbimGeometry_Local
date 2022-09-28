@@ -16,7 +16,7 @@ namespace Xbim.ModelGeometry.Scene.Extensions
             if (string.IsNullOrEmpty(rep.RepresentationIdentifier)) return false;
             string repIdentifier = rep.RepresentationIdentifier.Value;
             //if it is defined as body then it is candidate but exclude if it is using a line base representation
-            if (String.Compare(repIdentifier, "body", StringComparison.OrdinalIgnoreCase) == 0 || String.Compare(repIdentifier, "facetation", StringComparison.OrdinalIgnoreCase) == 0)
+            if (String.Compare(repIdentifier, "body", StringComparison.OrdinalIgnoreCase) == 0 || String.Compare(repIdentifier, "facetation", StringComparison.OrdinalIgnoreCase) == 0 || String.Compare(repIdentifier, "surface", StringComparison.OrdinalIgnoreCase) == 0)
             {
                 //this should always be defined in an ifc2x3 schema but if it is not assume a solid
                 if (!rep.RepresentationType.HasValue) return true;

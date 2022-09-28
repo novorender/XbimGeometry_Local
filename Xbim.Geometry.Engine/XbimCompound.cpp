@@ -1386,6 +1386,7 @@ namespace Xbim
 					TopoDS_Vertex currentTail;
 					BRepBuilderAPI_MakeWire wireMaker;
 
+					size_t noAddedEdges = 0;
 					for each (IIfcCartesianPoint ^ cp in Enumerable::Concat(polyloop->Polygon, Enumerable::Take(polyloop->Polygon, 1))) //add the start on to the polygon
 					{
 						try
@@ -1430,6 +1431,7 @@ namespace Xbim
 										TopoDS_Vertex edgeEnd = TopExp::LastVertex(edge, false); //it will laways be forward oriented
 										if (edgeEnd.IsSame(currentTail)) //we want this edge reversed
 										{
+											++noAddedEdges;
 											wireMaker.Add(TopoDS::Edge(edge.Reversed()));
 											sharedEdge = true;
 											break;
@@ -1445,6 +1447,7 @@ namespace Xbim
 										TopoDS_Vertex edgeEnd = TopExp::LastVertex(edge, false); //it will laways be forward oriented
 										if (edgeEnd.IsSame(vertex)) //we want this edge 
 										{
+											++noAddedEdges;
 											wireMaker.Add(TopoDS::Edge(edge));
 											sharedEdge = true;
 											break;
@@ -1454,6 +1457,7 @@ namespace Xbim
 								if (!sharedEdge) //make and add the new forward oriented edge if we have not found one
 								{
 									TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(currentTail, vertex);
+									++noAddedEdges;
 									wireMaker.Add(edge);
 									if (edgeMap.IsBound(currentTail)) //add it to the list
 									{
@@ -1476,7 +1480,7 @@ namespace Xbim
 							continue;
 						}
 					}
-					if (!wireMaker.IsDone()) //if its not the first point its gone wrong
+					if (!wireMaker.IsDone() || noAddedEdges < 3) //if its not the first point its gone wrong
 					{
 						XbimGeometryCreator::LogDebug(logger, polyloop, "Empty loop built and ignored");
 						continue;
@@ -1578,7 +1582,10 @@ namespace Xbim
 					XbimGeometryCreator::LogInfo(logger, ifcFace, "Failed to create IfcFace: " + err);
 					continue;
 				}
-				// Debug::WriteLine("Face " + ifcFace->EntityLabel.ToString() + " done");
+				catch (...) {
+					XbimGeometryCreator::LogError(logger, ifcFace, "Unknown face error,  face ignored");
+					continue;
+				}
 			}
 			//check the shell
 			BRepCheck_Shell checker(shell);

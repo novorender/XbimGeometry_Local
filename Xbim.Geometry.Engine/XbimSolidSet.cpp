@@ -224,10 +224,19 @@ namespace Xbim
 			if (solid != nullptr && solid->IsValid)
 			{
 				return solids->Add(solid);
-			}
-
+			};
 			IXbimSolidSet^ solidSet = dynamic_cast<IXbimSolidSet^>(shape);
-			if (solidSet != nullptr) return solids->AddRange(solidSet);
+			if (solidSet != nullptr) {
+				if (_useBoundingBoxesToCut) {
+					for each (XbimSolid ^ solid in solidSet) {
+						solids->Add(gcnew XbimSolid(solid->BoundingBox, 0.01, nullptr));
+					}
+					return;
+				}
+				else {
+					return solids->AddRange(solidSet);
+				}
+			}
 			IXbimGeometryObjectSet^ geomSet = dynamic_cast<IXbimGeometryObjectSet^>(shape);
 			if (geomSet != nullptr)
 			{
@@ -622,6 +631,7 @@ namespace Xbim
 
 
 			XbimSolidSet^ solidResults = gcnew XbimSolidSet();
+			solidResults->_useBoundingBoxesToCut = this->_useBoundingBoxesToCut;
 			for (int i = 0; i < this->Count; i++)
 			{
 				TopTools_ListOfShape tools;
@@ -1139,14 +1149,38 @@ namespace Xbim
 
 		XbimSolidSet^ XbimSolidSet::BuildBooleanResult(IIfcBooleanResult^ boolRes, IfcBooleanOperator operatorType, XbimSolidSet^ ops, ILogger^ logger)
 		{
-			
-
 			XbimSolidSet^ right = gcnew XbimSolidSet(boolRes->SecondOperand, logger);
-			
 			if (right->IsValid)
 			{
 				right->IfcEntityLabel = boolRes->SecondOperand->EntityLabel;
-				ops->Add(right);
+				if (!ops->_useBoundingBoxesToCut) {
+					if (IIfcFacetedBrep^ faceSet = dynamic_cast<IIfcFacetedBrep^>(boolRes->SecondOperand)) {
+						ops->_useBoundingBoxesToCut = faceSet->Outer->CfsFaces->Count > 10;
+						XbimGeometryCreator::LogError(logger, boolRes->SecondOperand, "Large number of faces in set for boolean operation, using bounding box");
+					}
+				}
+				//if () {
+				//	if (faceSet->Outer->CfsFaces->Count > 8) {
+				////		IXbimSolid^ solid = dynamic_cast<IXbimSolid^>(right);
+				////		if (solid != nullptr && solid->IsValid)
+				////		{
+				////			ops->Add(gcnew XbimSolid(solid->BoundingBox, 0.01, nullptr));
+				////		}
+				////		else if (IXbimSolidSet^ solidSet = dynamic_cast<IXbimSolidSet^>(right)) {
+				////			if (solidSet != nullptr) {
+				////				for each (XbimSolid ^ solid in solidSet) {
+				////					ops->Add(gcnew XbimSolid(solid->BoundingBox, 0.01, nullptr));
+				////				}
+				////			}
+				////		}
+				////	else {
+				////		ops->Add(right);
+				////	}
+				////}
+				////else 
+				{
+					ops->Add(right);
+				}
 			}
 
 			//if we are the same operator type for the first operand just aggregate them into a single solid set, otherwise execute, 
@@ -1165,6 +1199,7 @@ namespace Xbim
 				XbimSolidSet^ left = gcnew XbimSolidSet(boolRes->FirstOperand, logger);
 				left->IfcEntityLabel = boolRes->FirstOperand->EntityLabel;
 				ops->Reverse();
+				left->_useBoundingBoxesToCut = ops->_useBoundingBoxesToCut;
 				return left;
 			}
 		}

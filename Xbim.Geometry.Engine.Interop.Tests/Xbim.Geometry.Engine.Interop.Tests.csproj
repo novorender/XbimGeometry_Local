@@ -6,6 +6,8 @@
     <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\XbimOpenSourceKeyFile.snk</AssemblyOriginatorKeyFile>
+    <RepositoryUrl>https://github.com/novorender/novorender-backend</RepositoryUrl>
+    <Version>5.2.68</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -452,5 +454,5 @@
   <ItemGroup>
     <Folder Include="TestFiles\Github\" />
   </ItemGroup>
-  
+
 </Project>

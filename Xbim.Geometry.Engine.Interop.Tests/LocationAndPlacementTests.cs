@@ -10,6 +10,7 @@ using Xbim.Ifc4.GeometryResource;
 using Xbim.Ifc4.Interfaces;
 using Xbim.IO.Memory;
 using Xbim.ModelGeometry.Scene;
+using Xbim.Ifc;
 
 namespace Xbim.Geometry.Engine.Interop.Tests
 {
@@ -39,7 +40,17 @@ namespace Xbim.Geometry.Engine.Interop.Tests
         // [DeploymentItem("TestFiles\\LargeTriangulatedCoordinates.ifc")]
         public void LargeCoordinatesDisplacementTest()
         {
-            using (var m = new MemoryModel(new Ifc2x3.EntityFactoryIfc2x3()))
+            using (var model = IfcStore.Open("C:\\TestData\\IFC\\støttemur\\E6KM40_f-bru_K300-støttemur-Melhus.ifc"))
+            //using (var model = IfcStore.Open("C:\\TestData\\IFC\\hent\\Valhall_ByggO_ARK.ifc"))
+            {
+                var c = new Xbim3DModelContext(model);
+                c.MaxThreads = 1;
+                c.CreateContext();
+            }
+
+
+            using ( 
+                var m = new MemoryModel(new Ifc2x3.EntityFactoryIfc2x3()))
             {
                 m.LoadStep21("TestFiles\\LargeTriangulatedCoordinates.ifc");
                 var c = new Xbim3DModelContext(m);

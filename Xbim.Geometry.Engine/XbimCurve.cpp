@@ -573,6 +573,9 @@ namespace Xbim
 					else if (dynamic_cast<Xbim::Ifc4::MeasureResource::IfcParameterValue^>(trim))
 					{
 						u1 = (Xbim::Ifc4::MeasureResource::IfcParameterValue)trim;
+						if (u1 >= 360.0) {
+							u1 -= 360.0;
+						}
 						if (isConic) u1 *= parameterFactor; //correct to radians
 						else if (isLine) u1 *= ((IIfcLine^)curve->BasisCurve)->Dir->Magnitude;
 						u1Found = true;

@@ -1215,6 +1215,7 @@ namespace Xbim
 				*pFace = faceMaker.Face();
 				XbimVector3D tn = Normal;
 				//some models incorrectly output overlapping / intersecting wires, don't process them
+				if (profile->InnerCurves->Count < 500) {
 				for each (IIfcCurve ^ curve in profile->InnerCurves)
 				{
 					faceMaker.Init(*pFace); //reset the faceMaker
@@ -1287,6 +1288,7 @@ namespace Xbim
 						XbimGeometryCreator::LogWarning(logger, profile, "Invalid void. IfcCurve #{0} is not closed. Inner bound ignored", curve->EntityLabel);
 					}
 				}
+			}
 			}
 		}
 		void XbimFace::Init(IIfcCompositeProfileDef^ compProfile, ILogger^ logger)

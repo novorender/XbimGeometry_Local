@@ -1484,6 +1484,9 @@ namespace Xbim
 							break;
 						}
 					}
+					if (valTrim1 >= 360) {
+						valTrim1 -= 360;
+					}
 					double ret = valTrim2 - valTrim1;
 
 					if (ret < 0 && (dynamic_cast<IIfcConic^>(tc->BasisCurve) != nullptr)) //params will be periodic so take the abs length
@@ -1652,7 +1655,9 @@ namespace Xbim
 		{
 			XbimWire^ wire = gcnew XbimWire(directrix, logger, XbimConstraints::None);
 
-			if (!startParam.HasValue && !endParam.HasValue) //no trim required
+			IIfcCurve^ basisCurve = directrix;
+			//Makes no sense to bind indexed polycurve to start and end. Solibri ignoes this as well
+			if ((!startParam.HasValue && !endParam.HasValue) || dynamic_cast<IIfcIndexedPolyCurve^>(basisCurve)) //no trim required
 			{
 				return wire;
 			}
@@ -1660,7 +1665,6 @@ namespace Xbim
 
 			//if we have a trimmed curve we need to get the basis curve for correct parameterization
 
-			IIfcCurve^ basisCurve = directrix;
 			while (dynamic_cast<IIfcTrimmedCurve^>(basisCurve))
 				basisCurve = ((IIfcTrimmedCurve^)basisCurve)->BasisCurve;
 			double startPar = 0;

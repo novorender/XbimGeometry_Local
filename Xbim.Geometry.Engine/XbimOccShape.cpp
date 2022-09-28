@@ -412,6 +412,14 @@ namespace Xbim
 
 			if (!isPolyhedron)
 				BRepMesh_IncrementalMesh incrementalMesh(this, deflection, Standard_False, angle); //triangulate the first time							
+			//if (!isPolyhedron) {
+			//	IMeshTools_Parameters oc_meshParams;
+			//	oc_meshParams.Deflection = deflection;
+			//	oc_meshParams.Angle = angle;
+			//	oc_meshParams.MinSize = 100;
+			//	oc_meshParams.AllowQualityDecrease = true;
+			//	BRepMesh_IncrementalMesh incrementalMesh(this, oc_meshParams); //triangulate the first time							
+			//}
 			for (int f = 1; f <= faceMap.Extent(); f++)
 			{
 				const TopoDS_Face& face = TopoDS::Face(faceMap(f));
@@ -522,15 +530,19 @@ namespace Xbim
 						int numberEdges = outerWire.NbChildren();
 						if (numberEdges > 2)
 						{
-							array<ContourVertex>^ outerContour = gcnew array<ContourVertex>(numberEdges);
 							BRepTools_WireExplorer exp(outerWire, face);
-							for (int j = 0; exp.More(); exp.Next())
+							List<XbimPoint3D>^ contourPoints = gcnew List<XbimPoint3D>();;
+							for (; exp.More(); exp.Next())
 							{
 								gp_Pnt p = BRep_Tool::Pnt(exp.CurrentVertex());
-								outerContour[j].Position.X = p.X();
-								outerContour[j].Position.Y = p.Y();
-								outerContour[j].Position.Z = p.Z();
-								j++;
+								contourPoints->Add(XbimPoint3D(p.X(), p.Y(), p.Z()));
+
+							}
+							array<ContourVertex>^ outerContour = gcnew array<ContourVertex>(contourPoints->Count);
+							for (int j = 0; j < contourPoints->Count; ++j) {
+								outerContour[j].Position.X = contourPoints[j].X;
+								outerContour[j].Position.Y = contourPoints[j].Y;
+								outerContour[j].Position.Z = contourPoints[j].Z;
 							}
 							tess->AddContour(outerContour); //the original winding is correct as we have oriented the wire to the face in BRepTools_WireExplorer
 						}
