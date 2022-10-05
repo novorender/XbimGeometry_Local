@@ -8,7 +8,7 @@
 		<PackageId>Xbim.Geometry.Engine.Interop</PackageId>
 		<PackageIcon>xbim-toolkit-icon.png</PackageIcon>
 		<RepositoryUrl>https://github.com/novorender/novorender-backend</RepositoryUrl>
-		<Version>5.2.68</Version>
+		<Version>5.2.70</Version>
 	</PropertyGroup>
 	<ItemGroup>
 		<Content Include="..\Xbim.Geometry.Engine.Interop.targets">

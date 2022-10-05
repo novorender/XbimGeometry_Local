@@ -40,7 +40,7 @@ namespace Xbim.Geometry.Engine.Interop.Tests
         // [DeploymentItem("TestFiles\\LargeTriangulatedCoordinates.ifc")]
         public void LargeCoordinatesDisplacementTest()
         {
-            using (var model = IfcStore.Open("C:\\TestData\\IFC\\støttemur\\E6KM40_f-bru_K300-støttemur-Melhus.ifc"))
+            using (var model = IfcStore.Open("C:\\testdata\\ifc\\risa\\2022-24673_D01_f-veg_overbygning.ifc"))
             //using (var model = IfcStore.Open("C:\\TestData\\IFC\\hent\\Valhall_ByggO_ARK.ifc"))
             {
                 var c = new Xbim3DModelContext(model);
