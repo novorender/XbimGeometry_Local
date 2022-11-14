@@ -188,6 +188,14 @@ namespace Xbim.ModelGeometry.Scene
 
             private IModel Model { get; set; }
             private IfcRepresentationContextCollection Contexts { get; set; }
+            internal IIfcRepresentationContext getDefaultContext()
+            {
+                if (Contexts.Any())
+                {
+                    return Contexts.First();
+                }
+                return null;
+            }
             internal ParallelOptions ParallelOptions { get; private set; }
             internal XbimPlacementTree PlacementTree { get; private set; }
             internal HashSet<int> MappedShapeIds { get; private set; }
@@ -939,19 +947,20 @@ namespace Xbim.ModelGeometry.Scene
                         IXbimGeometryObjectSet nextGeom;
                         try
                         {
-                            nextGeom = CutWithTimeOut(elementGeom, openingAndProjectionOp.CutGeometries, precision, BooleanTimeOutMilliSeconds);
-                            if (nextGeom.IsValid)
-                            {
-                                if (nextGeom.First != null && nextGeom.First.IsValid)
-                                    
-                                    elementGeom = nextGeom;
+                                nextGeom = CutWithTimeOut(elementGeom, openingAndProjectionOp.CutGeometries, precision, BooleanTimeOutMilliSeconds);
+                                if (nextGeom.IsValid)
+                                {
+                                    if (nextGeom.First != null && nextGeom.First.IsValid)
+
+                                        elementGeom = nextGeom;
+                                    else
+                                        LogWarning(_model.Instances[elementLabel],
+                                            "Cutting openings has resulted in an empty shape");
+                                }
                                 else
                                     LogWarning(_model.Instances[elementLabel],
-                                        "Cutting openings has resulted in an empty shape");
-                            }
-                            else
-                                LogWarning(_model.Instances[elementLabel],
-                                    "Cutting openings has failed. Openings have been ignored");
+                                        "Cutting openings has failed. Openings have been ignored");
+
                         }
                         catch (TimeoutException)
                         {
@@ -1094,8 +1103,8 @@ namespace Xbim.ModelGeometry.Scene
 
             if(r.ContextOfItems == null)
             {
-                LogWarning(r, "No Context found for this representation");
-                return false;
+                LogWarning(r, "No Context found for this representation, using first");
+                return true;
             }
             // check for entity label to take advantage of keyed collection
             return contexts.Contains(r.ContextOfItems.EntityLabel);
@@ -1149,12 +1158,13 @@ namespace Xbim.ModelGeometry.Scene
             IIfcRepresentation rep, XbimGeometryRepresentationType repType, XbimMatrix3D placementTransform, IItemSet<IIfcRepresentationItem> representationItems)
         {
             var shapesInstances = new List<XbimShapeInstance>();
-            if(rep.ContextOfItems == null)
+            var context = rep.ContextOfItems == null ? contextHelper.getDefaultContext() : rep.ContextOfItems;
+            if (context == null)
             {
                 LogWarning(product, "Unable to write representation because no ContextOfItems was provided for representation {0}", rep.EntityLabel);
                 return shapesInstances;
             }
-            var contextId = rep.ContextOfItems.EntityLabel;
+            var contextId = context.EntityLabel;
             foreach (var representationItem in representationItems)
             {
                 if (representationItem is IIfcMappedItem theMap)
@@ -1186,7 +1196,7 @@ namespace Xbim.ModelGeometry.Scene
                             {
                                 //transform the bounds
                                 var transformedProductBounds = mappedGeometryReference.BoundingBox.Transform(trans);
-                                contextHelper.Clusters[rep.ContextOfItems].Enqueue(
+                                contextHelper.Clusters[context].Enqueue(
                                     new XbimBBoxClusterElement(mappedGeometryReference.GeometryId, transformedProductBounds)
                                     );
                             }
@@ -1223,7 +1233,7 @@ namespace Xbim.ModelGeometry.Scene
                         {
                             // transform the bounds
                             var transproductBounds = instance.BoundingBox.Transform(trans);
-                            contextHelper.Clusters[rep.ContextOfItems].Enqueue(
+                            contextHelper.Clusters[context].Enqueue(
                                 new XbimBBoxClusterElement(instance.GeometryId,
                                     transproductBounds));
                         }
