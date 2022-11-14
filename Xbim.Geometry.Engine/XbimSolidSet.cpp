@@ -636,19 +636,36 @@ namespace Xbim
 			{
 				TopTools_ListOfShape tools;
 				if (!solids[i]->IsValid) continue;
-				for each (IXbimSolid ^ tool in arguments)
-				{
-					tools.Append((XbimSolid^)tool);
-				}
+
 				TopoDS_Shape result;
-				int success = BOOLEAN_FAIL;
-				try
-				{
-					success = Xbim::Geometry::DoBoolean((XbimSolid^)solids[i], tools, operation, tolerance, XbimGeometryCreator::FuzzyFactor, result, XbimGeometryCreator::BooleanTimeOut);
-				}
-				catch (...)
-				{
-					success = BOOLEAN_FAIL;
+				TopoDS_Shape input = (XbimSolid^)solids[i];
+				int success = BOOLEAN_SUCCESS;
+
+				int numCutTools = arguments->Count;
+				auto enumerator = arguments->GetEnumerator();
+				enumerator->MoveNext();
+				int startIdx = 0;
+				while (success > 0 && startIdx < numCutTools) {
+					int endIdx = startIdx + 50;
+					if (endIdx > numCutTools) {
+						endIdx = numCutTools;
+					}
+					for (int j = startIdx; j < endIdx; ++j) {
+						tools.Append((XbimSolid^)enumerator->Current);
+						enumerator->MoveNext();
+					}
+					startIdx = endIdx;
+
+					try
+					{
+						success = Xbim::Geometry::DoBoolean(input, tools, operation, tolerance, XbimGeometryCreator::FuzzyFactor, result, XbimGeometryCreator::BooleanTimeOut);
+					}
+					catch (...)
+					{
+						success = BOOLEAN_FAIL;
+						break;
+					}
+					input = result;
 				}
 
 				if (success > 0)

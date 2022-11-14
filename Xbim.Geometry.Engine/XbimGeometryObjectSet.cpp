@@ -450,11 +450,9 @@ namespace Xbim
 			try
 			{
 				BRep_Builder builder;
-				ShapeFix_ShapeTolerance FTol;
 
 				TopoDS_Compound comp = CreateCompound(geomObjects);
-				Bnd_Box bodyBox;
-				BRepBndLib::Add(comp, bodyBox);
+
 				//get the subset of faces that intersect the openings
 				//we are going to treat shells different from solids by only cutting those faces that intersect the cut
 				TopoDS_Shell toBePassedThrough;
@@ -463,35 +461,61 @@ namespace Xbim
 				builder.MakeShell(facesToCut);
 				builder.MakeShell(toBePassedThrough);
 				TopTools_ListOfShape toBeProcessed;
-				TopTools_ListOfShape cuttingObjects;
+				std::vector<TopTools_ListOfShape> cuttingObjects;
 				Bnd_Array1OfBox allBoxes(1, solids->Count);
 				int i = 1;
-
-				
-				for each (XbimSolid ^ solid in solids)
-				{
-					if (solid != nullptr && solid->IsValid)
-					{
-						/*char buff[256];
-						sprintf(buff, "c:\\tmp\\O%d", i);
-						BRepTools::Write(solid, buff);*/
-
-						Bnd_Box box;
-						BRepBndLib::Add(solid, box);
-						allBoxes(i).SetGap(-tolerance * 2); //reduce to only catch faces that are inside tolerance and not sitting on the opening
-						if (!bodyBox.IsOut(box)) //only try and cut it if it might intersect the body
-						{
-							FTol.LimitTolerance(solid, tolerance);
-							cuttingObjects.Append(solid);
+				auto enumerator = solids->GetEnumerator();
+				enumerator->MoveNext();
+					int numCutTools = solids->Count;
+					int startIdx = 0;
+					while (startIdx < numCutTools) {
+						Bnd_Box bodyBox;
+						ShapeFix_ShapeTolerance FTol;
+						BRepBndLib::Add(comp, bodyBox);
+						cuttingObjects.push_back({});
+						auto& current = cuttingObjects.back();
+						int endIdx = startIdx + 50;
+						if (endIdx > numCutTools) {
+							endIdx = numCutTools;
 						}
-						i++;
-					}
-				}
+						for (int j = startIdx; j < endIdx; ++j)
+						{
+							auto solid = (XbimSolid^)enumerator->Current;
+							enumerator->MoveNext();
+							if (solid != nullptr && solid->IsValid)
+							{
+								/*char buff[256];
+								sprintf(buff, "c:\\tmp\\O%d", i);
+								BRepTools::Write(solid, buff);*/
 
-				if (cuttingObjects.Extent() == 0)
-				{
-					return gcnew XbimGeometryObjectSet(geomObjects);
-				}
+								Bnd_Box box;
+								BRepBndLib::Add(solid, box);
+								allBoxes(i).SetGap(-tolerance * 2); //reduce to only catch faces that are inside tolerance and not sitting on the opening
+								if (!bodyBox.IsOut(box)) //only try and cut it if it might intersect the body
+								{
+									FTol.LimitTolerance(solid, tolerance);
+									current.Append(solid);
+								}
+								i++;
+							}
+						}
+						startIdx = endIdx;
+					}
+
+					bool emptyCut = true;
+					for (const auto& cutObjBatch : cuttingObjects) {
+						if (cutObjBatch.Extent() != 0)
+						{
+							emptyCut = false;
+							break;
+						}
+					}
+
+					if (emptyCut) {
+						return gcnew XbimGeometryObjectSet(geomObjects);
+					}
+
+
 				if (!ParseGeometry(geomObjects, toBeProcessed, allBoxes, toBePassedThrough, tolerance)) //nothing to do so just return what we had
 					return gcnew XbimGeometryObjectSet(geomObjects);
 
@@ -507,14 +531,19 @@ namespace Xbim
 					try
 					{
 						TopoDS_Shape result;
+						TopoDS_Shape body = itl.Value();
+						for (const auto& cutObjBatch : cuttingObjects) {
+							success = Xbim::Geometry::DoBoolean(body, cutObjBatch, bop, tolerance, XbimGeometryCreator::FuzzyFactor, result, XbimGeometryCreator::BooleanTimeOut);
+							body = result;
+							if (success <= 0) {
+								break;
+							}
+						}
 
-						const TopoDS_Shape& body = itl.Value();
-						success = Xbim::Geometry::DoBoolean(body, cuttingObjects, bop, tolerance, XbimGeometryCreator::FuzzyFactor, result, XbimGeometryCreator::BooleanTimeOut);
 						if (success > 0)
 						{
 							builder.Add(occCompound, result);
 						}
-
 					}
 					catch (...)
 					{
