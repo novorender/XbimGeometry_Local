@@ -47,7 +47,7 @@ namespace Xbim
 					b.Add(comp, (XbimSolid^)solid);
 				}
 			}
-			BRepTools::Write(comp, oss);
+			BRepTools::Write(comp, oss, true, false, TopTools_FormatVersion_VERSION_2);
 			return gcnew String(oss.str().c_str());
 		}
 

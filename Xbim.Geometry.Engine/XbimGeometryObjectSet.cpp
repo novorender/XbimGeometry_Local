@@ -418,7 +418,7 @@ namespace Xbim
 		{
 			std::ostringstream oss;
 			TopoDS_Compound comp = CreateCompound(geometryObjects);
-			BRepTools::Write(comp, oss);
+			BRepTools::Write(comp, oss, true, false, TopTools_FormatVersion_VERSION_2);
 			return gcnew String(oss.str().c_str());
 		}
 
