@@ -1304,8 +1304,8 @@ namespace Xbim
 				gp_Dir vx(zDir.X, zDir.Y, zDir.Z);
 				gp_Ax1 ax1(origin, vx);
 				double radianConvert = repItem->Model->ModelFactors->AngleToRadiansConversionFactor;
-				BRepPrimAPI_MakeRevol revol(face, ax1, repItem->Angle * radianConvert);
-
+				const auto rotAngle = repItem->Angle * radianConvert;
+				BRepPrimAPI_MakeRevol revol = rotAngle >= 2 * M_PI ? BRepPrimAPI_MakeRevol(face, ax1) : BRepPrimAPI_MakeRevol(face, ax1, rotAngle);
 				GC::KeepAlive(face);
 				if (revol.IsDone())
 				{
@@ -1692,10 +1692,11 @@ namespace Xbim
 			}
 			else if (dynamic_cast<IIfcCompositeCurve^>(basisCurve)) //params are different
 			{
-
-				if (startParam.HasValue)
+				IIfcCompositeCurve^ curve = (IIfcCompositeCurve^)(basisCurve);
+				//Most viewers ignore Start/endParam on segments
+				if (startParam.HasValue && curve->Segments->Count < 2)
 					startPar = startParam.Value;
-				if (endParam.HasValue)
+				if (endParam.HasValue && curve->Segments->Count < 2)
 					endPar = endParam.Value;
 				double occStart = 0;
 				double occEnd = 0;
@@ -1703,14 +1704,12 @@ namespace Xbim
 
 				// for each segment we encounter, we will see if the threshold falls within its length
 				//
-				IIfcCompositeCurve^ curve = (IIfcCompositeCurve^)(basisCurve);
 				for each (IIfcCompositeCurveSegment ^ segment in curve->Segments)
 				{
 					XbimWire^ segWire = gcnew XbimWire(segment, logger, XbimConstraints::None);
 					double wireLen = segWire->Length;       // this is the length to add to the OCC command if we use all of the segment
 					double segValue = SegLength(segment, logger);   // this is the IFC size of the segment
 					totCurveLen += wireLen;
-
 
 					if (startPar > 0)
 					{
@@ -1730,7 +1729,6 @@ namespace Xbim
 				// only trim if needed either from start or end
 				if ((occStart > 0 && Math::Abs(occStart - 0.0) > precision) || (occEnd < totCurveLen && Math::Abs(occEnd - totCurveLen) > precision))
 				{
-
 					return (XbimWire^)wire->Trim(occStart, occEnd, directrix->Model->ModelFactors->Precision, logger);
 				}
 				else
