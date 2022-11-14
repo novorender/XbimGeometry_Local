@@ -212,6 +212,12 @@ namespace Xbim
 				xDir.Normalize();
 				return gp_Ax3(loc, zDir, xDir);
 			}
+			else if (axis3D->Axis != nullptr) {
+				gp_Vec zDir(axis3D->Axis->X, axis3D->Axis->Y, XbimConvert::GetZValueOrZero(axis3D->Axis));
+				zDir.Normalize();
+				gp_Dir xDir(1, 0, 0);
+				return gp_Ax3(loc, zDir, xDir);
+			}
 			else
 			{
 				gp_Dir zDir(0, 0, 1);
