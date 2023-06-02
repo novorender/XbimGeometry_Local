@@ -7,7 +7,7 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\XbimOpenSourceKeyFile.snk</AssemblyOriginatorKeyFile>
     <RepositoryUrl>https://github.com/novorender/novorender-backend</RepositoryUrl>
-    <Version>5.2.70</Version>
+    <Version>5.2.94</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

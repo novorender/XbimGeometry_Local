@@ -393,6 +393,9 @@ namespace Xbim
 						occShell = gcnew XbimCompound((IIfcClosedShell^)shell, logger);
 					else
 						occShell = gcnew XbimCompound((IIfcOpenShell^)shell, logger);
+					if (occShell->Count == 0) {
+						return;
+					}
 					for each (XbimShell ^ s in occShell->Shells)
 					{
 						XbimShell^ nestedShell = (XbimShell^)s;

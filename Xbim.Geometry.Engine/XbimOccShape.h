@@ -36,7 +36,7 @@ namespace Xbim
 			//operators
 			virtual operator const TopoDS_Shape& () abstract;
 			void WriteTriangulation(TextWriter^ textWriter, double tolerance, double deflection, double angle);
-			void WriteTriangulation(BinaryWriter^ binaryWriter, double tolerance, double deflection, double angle);
+			void WriteTriangulation(BinaryWriter^ binaryWriter, double tolerance, double deflection, double angle, double& offsetX, double& offsetY, double& offsetZ);
 			void WriteTriangulation(IXbimMeshReceiver^ mesh, double tolerance, double deflection, double angle);
 			virtual property bool IsSet{bool get() override { return false; }; }
 			virtual XbimGeometryObject^ Transformed(IIfcCartesianTransformationOperator ^transformation) abstract;

@@ -40,12 +40,22 @@ namespace Xbim.Geometry.Engine.Interop.Tests
         // [DeploymentItem("TestFiles\\LargeTriangulatedCoordinates.ifc")]
         public void LargeCoordinatesDisplacementTest()
         {
-            using (var model = IfcStore.Open("C:\\testdata\\ifc\\risa\\2022-24673_D01_f-veg_overbygning.ifc"))
-            //using (var model = IfcStore.Open("C:\\TestData\\IFC\\hent\\Valhall_ByggO_ARK.ifc"))
+            //using (var model = IfcStore.Open("C:\\testdata\\ifc\\samplehouse\\SampleHouse4.ifc"))
+            //using (var model = IfcStore.Open("C:\\TestData\\ifc\\asplan\\air-terminal-element.ifc"))
+                //using (var model = IfcStore.Open("C:\\TestData\\IFC\\revolved\\beam-revolved-solid.ifc"))
+                using (var model = IfcStore.Open("C:\\TestData\\IFC\\Bjorum–Skaret\\04 Constructions\\08-12_f_k-kon_K241-Rustanbekken-bru_spregning.ifc"))
+                //using (var model = IfcStore.Open("C:\\Projects\\Novotech\\import-test\\ifc\\test_files\\openings\\openings.ifc"))
             {
                 var c = new Xbim3DModelContext(model);
                 c.MaxThreads = 1;
                 c.CreateContext();
+                var product = model.Instances.FirstOrDefault<IIfcBeam>();
+                using (var store = model.GeometryStore.BeginRead())
+                {
+                    var instances = store.ShapeInstancesOfEntity(product);
+                }
+
+
             }
 
 

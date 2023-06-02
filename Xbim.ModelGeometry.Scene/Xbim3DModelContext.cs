@@ -975,34 +975,35 @@ namespace Xbim.ModelGeometry.Scene
                     //
                     foreach (var geom in elementGeom)
                     {
-                        XbimShapeGeometry shapeGeometry = new XbimShapeGeometry
-                        {
-                            IfcShapeLabel = elementLabel,
-                            GeometryHash = 0,
-                            LOD = XbimLOD.LOD_Unspecified,
-                            Format = geomType,
-                            BoundingBox = elementGeom.BoundingBox,
-                            Brep = Engine.ToBrep(geom)
-                        };
-                        var memStream = new MemoryStream(0x4000);
+                        XbimShapeGeometry shapeGeometry;
 
                         if (geomType == XbimGeometryType.PolyhedronBinary)
                         {
-                            using (var bw = new BinaryWriter(memStream))
-                            {
-                                Engine.WriteTriangulation(bw, geom, mf.Precision,
-                                    thisDeflectionDistance, thisDeflectionAngle);
-                            }
+                            shapeGeometry = Engine.CreateShapeGeometry(geom, mf.Precision, thisDeflectionDistance, thisDeflectionAngle, geomType, _logger);
+                            shapeGeometry.Brep = Engine.ToBrep(geom);
+                            shapeGeometry.IfcShapeLabel = elementLabel;
+
                         }
                         else
                         {
+                            shapeGeometry = new XbimShapeGeometry
+                            {
+                                IfcShapeLabel = elementLabel,
+                                GeometryHash = 0,
+                                LOD = XbimLOD.LOD_Unspecified,
+                                Format = geomType,
+                                BoundingBox = elementGeom.BoundingBox,
+                                Brep = Engine.ToBrep(geom)
+                            };
+                            var memStream = new MemoryStream(0x4000);
+
                             using (var tw = new StreamWriter(memStream))
                             {
                                 Engine.WriteTriangulation(tw, geom, mf.Precision,
                                     thisDeflectionDistance, thisDeflectionAngle);
                             }
+                            ((IXbimShapeGeometryData)shapeGeometry).ShapeData = memStream.ToArray();
                         }
-                        ((IXbimShapeGeometryData)shapeGeometry).ShapeData = memStream.ToArray();
                         if (shapeGeometry.ShapeData.Length > 0)
                         {
                             var shapeInstance = new XbimShapeInstance
@@ -1018,7 +1019,7 @@ namespace Xbim.ModelGeometry.Scene
                             };
 
                             shapeInstance.ShapeGeometryLabel = txn.AddShapeGeometry(shapeGeometry);
-                            txn.AddShapeInstance(shapeInstance, shapeInstance.ShapeGeometryLabel);
+                                txn.AddShapeInstance(shapeInstance, shapeInstance.ShapeGeometryLabel);
                         }
                     }
                     processed.TryAdd(elementLabel, 0);
@@ -1378,8 +1379,7 @@ namespace Xbim.ModelGeometry.Scene
             {
                 
 
-             //int c = 0;
-             //contextHelper.ParallelOptions.MaxDegreeOfParallelism = 1;
+                //contextHelper.ParallelOptions.MaxDegreeOfParallelism = 1;
                 Parallel.ForEach(contextHelper.ProductShapeIds, contextHelper.ParallelOptions, (shapeId) =>
                 {
                     Stopwatch productMeshingTime = new Stopwatch();
@@ -1410,12 +1410,6 @@ namespace Xbim.ModelGeometry.Scene
                     }
                     var isFeatureElementShape = contextHelper.FeatureElementShapeIds.Contains(shapeId);
                     var isVoidedProductShape = contextHelper.VoidedShapeIds.Contains(shapeId);
-                    //if (shape.EntityLabel == 63839)
-                    //{
-                    //    ++c;
-                    //}
-
-                    // Console.WriteLine(shape.GetType().Name);
 
                     XbimShapeGeometry shapeGeom = null;
                     IXbimGeometryObject geomModel = null;
@@ -1434,7 +1428,7 @@ namespace Xbim.ModelGeometry.Scene
                             if (faceSet != null)
                             {
                                 var noFaces = faceSet.CfsFaces.Count();
-                                if (40 < noFaces)
+                                if (100 < noFaces)
                                 {
                                     forceMesh = true;
                                     LogError($"{noFaces} number of faces in : #{shape.EntityLabel}, skip brep creation");
@@ -1447,7 +1441,7 @@ namespace Xbim.ModelGeometry.Scene
                     {
                         var facetedBrep = shape as IIfcFacetedBrep;
                         var noFaces = facetedBrep.Outer.CfsFaces.Count;
-                        if (40 < noFaces)
+                        if (100 < noFaces)
                         {
                             forceMesh = true;
                             LogError($"{noFaces} number of faces in : #{shape.EntityLabel}, skip brep creation");
@@ -1850,7 +1844,7 @@ namespace Xbim.ModelGeometry.Scene
         /// <returns></returns>
         public IXbimMeshGeometry3D ShapeGeometryMeshOf(int shapeGeometryLabel)
         {
-            var sg = ShapeGeometry(shapeGeometryLabel);
+            var sg = ShapeGeometry(shapeGeometryLabel) ;
             var mg = new XbimMeshGeometry3D();
             mg.Read(sg.ShapeData);
             return mg;

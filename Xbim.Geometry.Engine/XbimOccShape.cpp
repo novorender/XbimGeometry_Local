@@ -333,7 +333,7 @@ namespace Xbim
 				bw->Write(index);
 		}
 
-		void XbimOccShape::WriteTriangulation(BinaryWriter^ binaryWriter, double tolerance, double deflection, double angle)
+		void XbimOccShape::WriteTriangulation(BinaryWriter^ binaryWriter, double tolerance, double deflection, double angle, double& offsetX, double& offsetY, double& offsetZ)
 		{
 
 			if (!IsValid) return;
@@ -518,95 +518,95 @@ namespace Xbim
 				}
 				else //it is planar we can use LibMeshDotNet
 				{
-					//need to consider whoch side is front annd back
-					gp_Dir faceNormal = faceReversed ? plane->Axis().Direction().Reversed() : plane->Axis().Direction();
-					XbimPackedNormal packedNormal = XbimPackedNormal(faceNormal.X(), faceNormal.Y(), faceNormal.Z());
-					norms = gcnew List<XbimPackedNormal>(1);
-					TopTools_IndexedMapOfShape wireMap;
-					TopExp::MapShapes(face, TopAbs_WIRE, wireMap);
-					if (wireMap.Extent() == 1) //just one loop, it is the outer
+				//need to consider whoch side is front annd back
+				gp_Dir faceNormal = faceReversed ? plane->Axis().Direction().Reversed() : plane->Axis().Direction();
+				XbimPackedNormal packedNormal = XbimPackedNormal(faceNormal.X(), faceNormal.Y(), faceNormal.Z());
+				norms = gcnew List<XbimPackedNormal>(1);
+				TopTools_IndexedMapOfShape wireMap;
+				TopExp::MapShapes(face, TopAbs_WIRE, wireMap);
+				if (wireMap.Extent() == 1) //just one loop, it is the outer
+				{
+					TopoDS_Wire outerWire = TopoDS::Wire(wireMap(1));
+					int numberEdges = outerWire.NbChildren();
+					if (numberEdges > 2)
 					{
-						TopoDS_Wire outerWire = TopoDS::Wire(wireMap(1));
-						int numberEdges = outerWire.NbChildren();
-						if (numberEdges > 2)
+						BRepTools_WireExplorer exp(outerWire, face);
+						List<XbimPoint3D>^ contourPoints = gcnew List<XbimPoint3D>();;
+						for (; exp.More(); exp.Next())
 						{
-							BRepTools_WireExplorer exp(outerWire, face);
-							List<XbimPoint3D>^ contourPoints = gcnew List<XbimPoint3D>();;
-							for (; exp.More(); exp.Next())
+							gp_Pnt p = BRep_Tool::Pnt(exp.CurrentVertex());
+							contourPoints->Add(XbimPoint3D(p.X(), p.Y(), p.Z()));
+
+						}
+						array<ContourVertex>^ outerContour = gcnew array<ContourVertex>(contourPoints->Count);
+						for (int j = 0; j < contourPoints->Count; ++j) {
+							outerContour[j].Position.X = contourPoints[j].X;
+							outerContour[j].Position.Y = contourPoints[j].Y;
+							outerContour[j].Position.Z = contourPoints[j].Z;
+						}
+						tess->AddContour(outerContour); //the original winding is correct as we have oriented the wire to the face in BRepTools_WireExplorer
+					}
+
+				}
+				else
+				{
+					for (int i = 1; i <= wireMap.Extent(); i++)
+					{
+						TopoDS_Wire ccWire = TopoDS::Wire(wireMap(i));
+
+						int numberOfEdges = ccWire.NbChildren();
+						if (numberOfEdges > 2)
+						{
+							array<ContourVertex>^ contour = gcnew array<ContourVertex>(numberOfEdges);
+							BRepTools_WireExplorer exp(ccWire, face);
+							for (int j = 0; exp.More(); exp.Next())
 							{
 								gp_Pnt p = BRep_Tool::Pnt(exp.CurrentVertex());
-								contourPoints->Add(XbimPoint3D(p.X(), p.Y(), p.Z()));
-
+								contour[j].Position.X = p.X();
+								contour[j].Position.Y = p.Y();
+								contour[j].Position.Z = p.Z();
+								j++;
 							}
-							array<ContourVertex>^ outerContour = gcnew array<ContourVertex>(contourPoints->Count);
-							for (int j = 0; j < contourPoints->Count; ++j) {
-								outerContour[j].Position.X = contourPoints[j].X;
-								outerContour[j].Position.Y = contourPoints[j].Y;
-								outerContour[j].Position.Z = contourPoints[j].Z;
-							}
-							tess->AddContour(outerContour); //the original winding is correct as we have oriented the wire to the face in BRepTools_WireExplorer
+							tess->AddContour(contour); //the original winding is correct as we have oriented the wire to the face in BRepTools_WireExplorer
 						}
-
 					}
-					else
+				}
+				tess->Tessellate(Xbim::Tessellator::WindingRule::EvenOdd, Xbim::Tessellator::ElementType::Polygons, 3);
+				if (tess->ElementCount > 0) //we have some triangles
+				{
+					int numTriangles = tess->ElementCount;
+					triangleCount += numTriangles;
+					array<ContourVertex>^ contourVerts = tess->Vertices;
+					array<int>^ elements = tess->Elements;
+					pointLookup->Add(gcnew List<int>(tess->VertexCount));
+					/*System::Diagnostics::Debug::Assert(Math::Abs(nor[0] - faceNormal.X()) < 1e-3);
+					System::Diagnostics::Debug::Assert(Math::Abs(nor[1] - faceNormal.Y()) < 1e-3);
+					System::Diagnostics::Debug::Assert(Math::Abs(nor[2] - faceNormal.Z()) < 1e-3);*/
+					norms->Add(packedNormal);
+					normalLookup->Add(norms);
+					for (int i = 0; i < tess->VertexCount; i++) //visit each node for vertices
 					{
-						for (int i = 1; i <= wireMap.Extent(); i++)
+						Vec3 p = contourVerts[i].Position;
+						int index;
+						XbimPoint3DWithTolerance^ pt = gcnew XbimPoint3DWithTolerance(p.X, p.Y, p.Z, tolerance);
+						if (!pointMap->TryGetValue(pt, index))
 						{
-							TopoDS_Wire ccWire = TopoDS::Wire(wireMap(i));
-
-							int numberOfEdges = ccWire.NbChildren();
-							if (numberOfEdges > 2)
-							{
-								array<ContourVertex>^ contour = gcnew array<ContourVertex>(numberOfEdges);
-								BRepTools_WireExplorer exp(ccWire, face);
-								for (int j = 0; exp.More(); exp.Next())
-								{
-									gp_Pnt p = BRep_Tool::Pnt(exp.CurrentVertex());
-									contour[j].Position.X = p.X();
-									contour[j].Position.Y = p.Y();
-									contour[j].Position.Z = p.Z();
-									j++;
-								}
-								tess->AddContour(contour); //the original winding is correct as we have oriented the wire to the face in BRepTools_WireExplorer
-							}
+							index = points->Count;
+							pointMap->Add(pt, index);
+							points->Add(pt->VertexGeometry);
 						}
+						pointLookup[faceIndex]->Add(index);
 					}
-					tess->Tessellate(Xbim::Tessellator::WindingRule::EvenOdd, Xbim::Tessellator::ElementType::Polygons, 3);
-					if (tess->ElementCount > 0) //we have some triangles
+					List<int>^ elems = gcnew List<int>(numTriangles * 3);
+					for (int j = 0; j < numTriangles; j++)
 					{
-						int numTriangles = tess->ElementCount;
-						triangleCount += numTriangles;
-						array<ContourVertex>^ contourVerts = tess->Vertices;
-						array<int>^ elements = tess->Elements;
-						pointLookup->Add(gcnew List<int>(tess->VertexCount));
-						/*System::Diagnostics::Debug::Assert(Math::Abs(nor[0] - faceNormal.X()) < 1e-3);
-						System::Diagnostics::Debug::Assert(Math::Abs(nor[1] - faceNormal.Y()) < 1e-3);
-						System::Diagnostics::Debug::Assert(Math::Abs(nor[2] - faceNormal.Z()) < 1e-3);*/
-						norms->Add(packedNormal);
-						normalLookup->Add(norms);
-						for (int i = 0; i < tess->VertexCount; i++) //visit each node for vertices
-						{
-							Vec3 p = contourVerts[i].Position;
-							int index;
-							XbimPoint3DWithTolerance^ pt = gcnew XbimPoint3DWithTolerance(p.X, p.Y, p.Z, tolerance);
-							if (!pointMap->TryGetValue(pt, index))
-							{
-								index = points->Count;
-								pointMap->Add(pt, index);
-								points->Add(pt->VertexGeometry);
-							}
-							pointLookup[faceIndex]->Add(index);
-						}
-						List<int>^ elems = gcnew List<int>(numTriangles * 3);
-						for (int j = 0; j < numTriangles; j++)
-						{
-							elems->Add(elements[j * 3]);
-							elems->Add(elements[j * 3 + 1]);
-							elems->Add(elements[j * 3 + 2]);
-						}
-						tessellations->Add(elems);
-						faceIndex++;
+						elems->Add(elements[j * 3]);
+						elems->Add(elements[j * 3 + 1]);
+						elems->Add(elements[j * 3 + 2]);
 					}
+					tessellations->Add(elems);
+					faceIndex++;
+				}
 				}
 			}
 			// Write out header
@@ -615,11 +615,20 @@ namespace Xbim
 			binaryWriter->Write((UInt32)numVertices); //number of vertices
 			binaryWriter->Write((UInt32)triangleCount); //number of triangles
 			//write out vertices 
+			if (points->Count > 0 && offsetX == 0 &&
+				(std::abs(points[0].X) > 10000 || std::abs(points[0].Y) > 10000 || std::abs(points[0].Z) > 10000)) {
+				offsetX = points[0].X;
+				offsetY = points[0].Y;
+				offsetZ = points[0].Z;
+			}
 			for each (XbimPoint3D p in points)
 			{
-				binaryWriter->Write((float)p.X);
-				binaryWriter->Write((float)p.Y);
-				binaryWriter->Write((float)p.Z);
+				float x = (float)(p.X - offsetX);
+				float y = (float)(p.Y - offsetY);
+				float z = (float)(p.Z - offsetZ);
+				binaryWriter->Write(x);
+				binaryWriter->Write(y);
+				binaryWriter->Write(z);
 			}
 
 			//now write out the faces

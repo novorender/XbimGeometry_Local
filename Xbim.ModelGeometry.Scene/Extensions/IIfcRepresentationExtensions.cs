@@ -39,6 +39,7 @@ namespace Xbim.ModelGeometry.Scene.Extensions
                     case "mappedrepresentation":
                     case "tessellation":
                     case "advancedbrep":
+                    case "solid":
                         return true;
                     //case "geometricset":
                     //case "geometriccurveset":

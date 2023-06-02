@@ -9,7 +9,7 @@
     <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
     <PackageIcon>xbim-toolkit-icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/novorender/novorender-backend</RepositoryUrl>
-    <Version>5.2.70</Version>
+    <Version>5.2.94</Version>
     <AssemblyVersion>5.1.0.1</AssemblyVersion>
     <FileVersion>5.1.0.1</FileVersion>
   </PropertyGroup>
@@ -19,8 +19,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Xbim.Ifc" Version="5.2.10" />
-    <PackageReference Include="Xbim.Tessellator" Version="5.2.10" />
+    <PackageReference Include="Xbim.Ifc" Version="5.2.11" />
+    <PackageReference Include="Xbim.Tessellator" Version="5.2.11" />
   </ItemGroup>
 
   <ItemGroup>

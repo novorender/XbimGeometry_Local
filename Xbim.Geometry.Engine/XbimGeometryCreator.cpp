@@ -324,6 +324,9 @@ namespace Xbim
 		XbimShapeGeometry^ XbimGeometryCreator::CreateShapeGeometry(IXbimGeometryObject^ geometryObject, double precision, double deflection, double angle, XbimGeometryType storageType, ILogger^ /*logger*/)
 		{
 			XbimShapeGeometry^ shapeGeom = gcnew XbimShapeGeometry();
+			double xOffset = 0;
+			double yOffset = 0;
+			double zOffset = 0;
 
 			if (geometryObject->IsSet)
 			{
@@ -346,7 +349,7 @@ namespace Xbim
 							}
 						}
 						XbimCompound^ compound = gcnew XbimCompound(occCompound, false, precision);
-						WriteTriangulation(bw, compound, precision, deflection, angle);
+						WriteTriangulation(bw, compound, precision, deflection, angle, xOffset, yOffset, zOffset);
 						bw->Close();
 						delete bw;
 					}
@@ -366,6 +369,9 @@ namespace Xbim
 
 					if (shapeGeom->ShapeData->Length > 0)
 					{
+						shapeGeom->OffsetX = xOffset;
+						shapeGeom->OffsetY = yOffset;
+						shapeGeom->OffsetZ = zOffset;
 						((XbimShapeGeometry^)shapeGeom)->BoundingBox = geometryObject->BoundingBox;
 						((XbimShapeGeometry^)shapeGeom)->LOD = XbimLOD::LOD_Unspecified,
 							((XbimShapeGeometry^)shapeGeom)->Format = storageType;
@@ -379,7 +385,7 @@ namespace Xbim
 				if (storageType == XbimGeometryType::PolyhedronBinary)
 				{
 					BinaryWriter^ bw = gcnew BinaryWriter(memStream);
-					WriteTriangulation(bw, geometryObject, precision, deflection, angle);
+					WriteTriangulation(bw, geometryObject, precision, deflection, angle, xOffset, yOffset, zOffset);
 					bw->Close();
 					delete bw;
 				}
@@ -391,7 +397,10 @@ namespace Xbim
 					delete tw;
 				}
 				memStream->Flush();
-				
+			
+				shapeGeom->OffsetX = xOffset;
+				shapeGeom->OffsetY = yOffset;
+				shapeGeom->OffsetZ = zOffset;
 				((IXbimShapeGeometryData^)shapeGeom)->ShapeData = memStream->ToArray();
 				delete memStream;
 				if (shapeGeom->ShapeData->Length > 0)
@@ -951,14 +960,20 @@ namespace Xbim
 			}
 
 		}
-
 		void XbimGeometryCreator::WriteTriangulation(BinaryWriter^ bw, IXbimGeometryObject^ shape, double tolerance, double deflection, double angle)
+		{
+			double offsetX = 0;
+			double offsetY = 0;
+			double offsetZ = 0;
+			WriteTriangulation(bw, shape, tolerance, deflection, angle, offsetX, offsetY, offsetZ);
+		}
+		void XbimGeometryCreator::WriteTriangulation(BinaryWriter^ bw, IXbimGeometryObject^ shape, double tolerance, double deflection, double angle, double& offsetX, double& offsetY, double& offsetZ)
 		{
 
 			XbimOccShape^ xShape = dynamic_cast<XbimOccShape^>(shape);
 			if (xShape != nullptr)
 			{
-				xShape->WriteTriangulation(bw, tolerance, deflection, angle);
+				xShape->WriteTriangulation(bw, tolerance, deflection, angle, offsetX, offsetY, offsetZ);
 				return;
 			}
 		}

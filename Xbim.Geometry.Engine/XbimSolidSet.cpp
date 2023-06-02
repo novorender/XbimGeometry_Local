@@ -1172,7 +1172,7 @@ namespace Xbim
 				right->IfcEntityLabel = boolRes->SecondOperand->EntityLabel;
 				if (!ops->_useBoundingBoxesToCut) {
 					if (IIfcFacetedBrep^ faceSet = dynamic_cast<IIfcFacetedBrep^>(boolRes->SecondOperand)) {
-						ops->_useBoundingBoxesToCut = faceSet->Outer->CfsFaces->Count > 10;
+						ops->_useBoundingBoxesToCut = ops->Count > 10 &&  faceSet->Outer->CfsFaces->Count > 10;
 						XbimGeometryCreator::LogError(logger, boolRes->SecondOperand, "Large number of faces in set for boolean operation, using bounding box");
 					}
 				}
