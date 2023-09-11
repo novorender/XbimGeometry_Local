@@ -9,7 +9,7 @@
     <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
     <PackageIcon>xbim-toolkit-icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/novorender/novorender-backend</RepositoryUrl>
-    <Version>5.2.94</Version>
+    <Version>5.2.97</Version>
     <AssemblyVersion>5.1.0.1</AssemblyVersion>
     <FileVersion>5.1.0.1</FileVersion>
   </PropertyGroup>

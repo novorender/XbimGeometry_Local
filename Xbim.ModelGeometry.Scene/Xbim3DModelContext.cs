@@ -308,11 +308,13 @@ namespace Xbim.ModelGeometry.Scene
                 var compoundElementsDictionary = XbimMultiValueDictionary<IIfcObjectDefinition, IIfcObjectDefinition>.Create<HashSet<IIfcObjectDefinition>>();
                 foreach (var aggRel in Model.Instances.OfType<IIfcRelAggregates>())
                 {
-                    foreach (var relObj in aggRel.RelatedObjects)
+                    if (aggRel.RelatingObject != null)
                     {
-                        compoundElementsDictionary.Add(aggRel.RelatingObject, relObj);
+                        foreach (var relObj in aggRel.RelatedObjects)
+                        {
+                            compoundElementsDictionary.Add(aggRel.RelatingObject, relObj);
+                        }
                     }
-
                 }
 
                 // openings
@@ -512,7 +514,7 @@ namespace Xbim.ModelGeometry.Scene
         {
             var timeOut = System.Configuration.ConfigurationManager.AppSettings["BooleanTimeOut"];
             //if (!int.TryParse(timeOut, out int BooleanTimeOutSeconds))
-            BooleanTimeOutMilliSeconds = 600000;
+            BooleanTimeOutMilliSeconds = 300000;
         }
         private readonly IModel _model;
 
@@ -1377,7 +1379,9 @@ namespace Xbim.ModelGeometry.Scene
             ConcurrentDictionary<int, byte> processed = new ConcurrentDictionary<int, byte>();
             try
             {
-                
+                //int c = 0;
+                //int cc = 0;
+                //int ccc = 0;
 
                 //contextHelper.ParallelOptions.MaxDegreeOfParallelism = 1;
                 Parallel.ForEach(contextHelper.ProductShapeIds, contextHelper.ParallelOptions, (shapeId) =>
@@ -1448,6 +1452,25 @@ namespace Xbim.ModelGeometry.Scene
                         }
                     }
 
+                    //++c;
+                    //if (c > 1000)
+                    //{
+                    //    c = 0;
+                    //    cc += 1000;
+                    //}
+                    //if (cc == 5000)
+                    //{
+                    //    if (c > 100)
+                    //    {
+                    //        ccc += 100;
+                    //        c = 0;
+                    //    }
+                    //    if (ccc == 800 && c == 16)
+                    //    {
+                    //        LogError($"");
+                    //    }
+                    //}
+
                     if (!isFeatureElementShape && !isVoidedProductShape && (xbimTessellator.CanMesh(shape) || forceMesh)) // if we can mesh the shape directly just do it
                     {
                         shapeGeom = xbimTessellator.Mesh(shape);
@@ -1456,7 +1479,34 @@ namespace Xbim.ModelGeometry.Scene
                     {
                         try
                         {
-                            geomModel = Engine.Create(shape, _logger);
+                            Thread threadToKill = null;
+                            Func<IXbimGeometryObject> createWithTimeout = () =>
+                            {
+                                threadToKill = Thread.CurrentThread;
+                                try
+                                {
+                                    return Engine.Create(shape, _logger);
+                                }
+                                catch (ThreadAbortException)
+                                {
+                                    _logger.LogWarning("Thread aborted due to timeout");
+                                    Thread.ResetAbort();// cancel hard aborting, lets to finish it nicely.
+                                    return null;
+                                }
+
+                            };
+
+                            IAsyncResult result = createWithTimeout.BeginInvoke(null, null);
+                            if (result.AsyncWaitHandle.WaitOne(BooleanTimeOutMilliSeconds))
+                            {
+                                geomModel = createWithTimeout.EndInvoke(result);
+                                result.AsyncWaitHandle.Close();
+                            }
+                            else
+                            {
+                                threadToKill?.Abort();
+                                LogError($"Timeout trying to generate shape : {shape.EntityLabel}");
+                            }
                         }
                         catch (XbimGeometryFaceSetTooLargeException fse)
                         {
