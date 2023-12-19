@@ -608,9 +608,9 @@ namespace Xbim.ModelGeometry.Scene
             // from this moment we are using the same code we were using before on the prepared builtContextList
             // 
             var contexts = builtContextList.Where(
-                        c =>
+                        c =>c != null &&(
                             string.Compare(c.ContextType, contextType, true) == 0 ||
-                            string.Compare(c.ContextType, "design", true) == 0).ToList();
+                            string.Compare(c.ContextType, "design", true) == 0)).ToList();
             //allow for incorrect older models
 
 
@@ -1479,32 +1479,12 @@ namespace Xbim.ModelGeometry.Scene
                     {
                         try
                         {
-                            Thread threadToKill = null;
-                            Func<IXbimGeometryObject> createWithTimeout = () =>
-                            {
-                                threadToKill = Thread.CurrentThread;
-                                try
-                                {
-                                    return Engine.Create(shape, _logger);
-                                }
-                                catch (ThreadAbortException)
-                                {
-                                    _logger.LogWarning("Thread aborted due to timeout");
-                                    Thread.ResetAbort();// cancel hard aborting, lets to finish it nicely.
-                                    return null;
-                                }
-
-                            };
-
-                            IAsyncResult result = createWithTimeout.BeginInvoke(null, null);
-                            if (result.AsyncWaitHandle.WaitOne(BooleanTimeOutMilliSeconds))
-                            {
-                                geomModel = createWithTimeout.EndInvoke(result);
-                                result.AsyncWaitHandle.Close();
+                            var task = Task.Run(() => Engine.Create(shape, _logger));
+                            if (task.Wait(BooleanTimeOutMilliSeconds)) {
+                                geomModel = task.Result;
                             }
                             else
                             {
-                                threadToKill?.Abort();
                                 LogError($"Timeout trying to generate shape : {shape.EntityLabel}");
                             }
                         }
