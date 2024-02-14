@@ -462,6 +462,7 @@ namespace Xbim
 				builder.MakeShell(toBePassedThrough);
 				TopTools_ListOfShape toBeProcessed;
 				std::vector<TopTools_ListOfShape> cuttingObjects;
+				TopTools_ListOfShape allObjects;
 				Bnd_Array1OfBox allBoxes(1, solids->Count);
 				int i = 1;
 				auto enumerator = solids->GetEnumerator();
@@ -491,16 +492,18 @@ namespace Xbim
 								Bnd_Box box;
 								BRepBndLib::Add(solid, box);
 								allBoxes(i).SetGap(-tolerance * 2); //reduce to only catch faces that are inside tolerance and not sitting on the opening
-								if (!bodyBox.IsOut(box)) //only try and cut it if it might intersect the body
+								if (!bodyBox.IsOut(box) && !allObjects.Contains(solid)) //only try and cut it if it might intersect the body
 								{
 									FTol.LimitTolerance(solid, tolerance);
 									current.Append(solid);
+									allObjects.Append(solid);
 								}
 								i++;
 							}
 						}
 						startIdx = endIdx;
 					}
+					allObjects.Clear();
 
 					bool emptyCut = true;
 					for (const auto& cutObjBatch : cuttingObjects) {

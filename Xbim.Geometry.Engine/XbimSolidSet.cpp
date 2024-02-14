@@ -461,9 +461,13 @@ namespace Xbim
 				for (; it.More(); it.Next())
 				{
 					TopoDS_Shape tsArg = it.Value();
+					
 					//screen out things that don't intersect when we are cutting
 					if (op == BOPAlgo_Operation::BOPAlgo_CUT || op == BOPAlgo_Operation::BOPAlgo_CUT21)
 					{
+						if (shapeTools.Contains(tsArg) || body.IsEqual(tsArg)) {
+							continue;
+						}
 
 						Bnd_Box tsCutBox;
 						BRepBndLib::Add(tsArg, tsCutBox);

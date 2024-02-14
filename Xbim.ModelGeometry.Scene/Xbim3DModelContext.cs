@@ -950,7 +950,7 @@ namespace Xbim.ModelGeometry.Scene
                         try
                         {
                                 nextGeom = CutWithTimeOut(elementGeom, openingAndProjectionOp.CutGeometries, precision, BooleanTimeOutMilliSeconds);
-                                if (nextGeom.IsValid)
+                                if (nextGeom != null && nextGeom.IsValid)
                                 {
                                     if (nextGeom.First != null && nextGeom.First.IsValid)
 
