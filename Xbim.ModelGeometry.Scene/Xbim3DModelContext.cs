@@ -1503,22 +1503,33 @@ namespace Xbim.ModelGeometry.Scene
                         }
                         if (geomModel != null && geomModel.IsValid)
                         {
-                            shapeGeom = Engine.CreateShapeGeometry(geomModel, precision, deflection, deflectionAngle, geomStorageType, _logger);
-                            shapeGeom.Brep = Engine.ToBrep(geomModel);
-                            if (isFeatureElementShape)
+                            try
                             {
-                                var geomSet = geomModel as IXbimGeometryObjectSet;
-                                if (geomSet != null)
+                                shapeGeom = Engine.CreateShapeGeometry(geomModel, precision, deflection, deflectionAngle, geomStorageType, _logger);
+                                shapeGeom.Brep = Engine.ToBrep(geomModel);
+                                if (isFeatureElementShape)
                                 {
-                                    var solidSet = Engine.CreateSolidSet();
-                                    solidSet.Add(geomSet);
-                                    contextHelper.CachedGeometries.TryAdd(shapeId, solidSet);
+                                    var geomSet = geomModel as IXbimGeometryObjectSet;
+                                    if (geomSet != null)
+                                    {
+                                        var solidSet = Engine.CreateSolidSet();
+                                        solidSet.Add(geomSet);
+                                        contextHelper.CachedGeometries.TryAdd(shapeId, solidSet);
+                                    }
+                                    //we need for boolean operations later, add the polyhedron if the face is planar
+                                    else contextHelper.CachedGeometries.TryAdd(shapeId, geomModel);
                                 }
-                                //we need for boolean operations later, add the polyhedron if the face is planar
-                                else contextHelper.CachedGeometries.TryAdd(shapeId, geomModel);
+                                else if (isVoidedProductShape)
+                                    contextHelper.CachedGeometries.TryAdd(shapeId, geomModel);
                             }
-                            else if (isVoidedProductShape)
-                                contextHelper.CachedGeometries.TryAdd(shapeId, geomModel);
+                            catch (Exception ex)
+                            {
+                                var errmsg = string.Format("Tesselation issues for EntityLabel #{0}. Geometry Ignored.", shape.EntityLabel);
+                                LogError(errmsg, ex);
+
+                            }
+
+          
                         }
                     }
 
