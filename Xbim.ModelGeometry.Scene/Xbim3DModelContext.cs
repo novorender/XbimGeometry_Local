@@ -1447,29 +1447,40 @@ namespace Xbim.ModelGeometry.Scene
                         var noFaces = facetedBrep.Outer.CfsFaces.Count;
                         if (100 < noFaces)
                         {
+                            var triangleSet = true;
                             forceMesh = true;
                             LogError($"{noFaces} number of faces in : #{shape.EntityLabel}, skip brep creation");
+                            foreach (var face in facetedBrep.Outer.CfsFaces)
+                            {
+                                if (face.Bounds.Count() == 1)
+                                {
+                                    var ifcFace = face.Bounds[0] as IfcFaceBound;
+                                    if (ifcFace == null)
+                                    {
+                                        triangleSet = false;
+                                        break;
+                                    }
+                                    var bounds = ifcFace.Bound as IfcPolyLoop;
+
+                                    if (bounds == null || bounds.Polygon.Count() > 4)
+                                    {
+                                        triangleSet = false;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    triangleSet = false;
+                                    break;
+                                }
+
+                            }
+                            if (triangleSet)
+                            {
+                                return;
+                            }
                         }
                     }
-
-                    //++c;
-                    //if (c > 1000)
-                    //{
-                    //    c = 0;
-                    //    cc += 1000;
-                    //}
-                    //if (cc == 5000)
-                    //{
-                    //    if (c > 100)
-                    //    {
-                    //        ccc += 100;
-                    //        c = 0;
-                    //    }
-                    //    if (ccc == 800 && c == 16)
-                    //    {
-                    //        LogError($"");
-                    //    }
-                    //}
 
                     if (!isFeatureElementShape && !isVoidedProductShape && (xbimTessellator.CanMesh(shape) || forceMesh)) // if we can mesh the shape directly just do it
                     {
