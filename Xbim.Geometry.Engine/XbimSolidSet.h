@@ -75,7 +75,7 @@ namespace Xbim
 
 			static property XbimSolidSet^ Empty{XbimSolidSet^ get(){ return empty; }};
 			static XbimSolidSet^ BuildClippingList(IIfcBooleanClippingResult^ solid, List<IIfcBooleanOperand^>^ clipList, ILogger^ logger);
-			static XbimSolidSet^ BuildBooleanResult(IIfcBooleanResult^ solid, IfcBooleanOperator operatorType, XbimSolidSet^ ops, ILogger^ logger);
+			static XbimSolidSet^ BuildBooleanResult(IIfcBooleanResult^ solid, IfcBooleanOperator operatorType, XbimSolidSet^ ops, XbimSolidSet^ halfspaceOps, bool cutOp, ILogger^ logger);
 			XbimSolidSet();
 			XbimSolidSet(const TopoDS_Shape& shape);
 			XbimSolidSet(XbimCompound^ shape);

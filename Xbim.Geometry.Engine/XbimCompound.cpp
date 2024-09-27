@@ -72,6 +72,7 @@
 #include <BRepTools_WireExplorer.hxx>
 #include <BRepExtrema_DistShapeShape.hxx>
 #include <BRepFill.hxx>
+#include <map>
 // #include <ShapeBuild_ReShape.hxx> // this was suggeste in PR79 - but it does not seem to make the difference with OCC72
 
 using namespace System;
@@ -1367,6 +1368,8 @@ namespace Xbim
 				int numBounds = ifcFace->Bounds->Count;
 				TopoDS_Wire outerLoop;
 				TopTools_SequenceOfShape innerLoops;
+				HashSet<int>^ outerIds = gcnew HashSet<int>();
+
 				for each (IIfcFaceBound ^ bound in ifcFace->Bounds)
 				{
 
@@ -1385,6 +1388,7 @@ namespace Xbim
 						XbimGeometryCreator::LogWarning(logger, polyloop, "Invalid loop, it has less than three points. Wire discarded");
 						continue;
 					}
+
 					bool isOuter = numBounds == 1 || (dynamic_cast<IIfcFaceOuterBound^>(bound) != nullptr);
 					TopoDS_Vertex currentTail;
 					BRepBuilderAPI_MakeWire wireMaker;
@@ -1394,12 +1398,21 @@ namespace Xbim
 					{
 						try
 						{
+							if (isOuter) {
+								outerIds->Add(cp->EntityLabel);
+							}
+							else if (outerIds->Contains(cp->EntityLabel)) {
+								continue;
+							}
 							gp_Pnt p = XbimConvert::GetPoint3d(cp);
 							inspector.ClearResList();
 							inspector.SetCurrent(p.Coord());
 							vertexCellFilter.Inspect(p.Coord(), inspector);
 							TColStd_ListOfInteger results = inspector.ResInd();
 							TopoDS_Vertex vertex;
+							//if (p.X() < 10) {
+							//	continue;
+							//}
 							if (results.Size() > 0) //hit
 							{
 								//just take the first one as we don't add vertices more than once to a cell

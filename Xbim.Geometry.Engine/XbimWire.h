@@ -55,6 +55,7 @@ namespace Xbim
 			//parametrised profiles
 			void Init(IIfcProfileDef^ profile, ILogger^ logger, XbimConstraints constraints);
 			void Init(IIfcDerivedProfileDef^ profile, ILogger^ logger, XbimConstraints constraints);
+			void Init(IIfcTrapeziumProfileDef^ profile, ILogger^ logger, XbimConstraints constraints);
 			void Init(IIfcParameterizedProfileDef^ profile, ILogger^ logger, XbimConstraints constraints);
 			void Init(IIfcCircleProfileDef^ circProfile, ILogger^ logger, XbimConstraints constraints);
 			void Init(IIfcRectangleProfileDef^ rectProfile, ILogger^ logger, XbimConstraints constraints);

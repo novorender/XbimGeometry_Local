@@ -211,7 +211,6 @@ namespace Xbim
 			if (2 != (int)profile->OuterCurve->Dim)
 			{
 				XbimGeometryCreator::LogWarning(logger, profile, "The curve used for the outer curve definition shall have the dimensionality of 2. Error in IFC file");
-				return;
 			}
 			if (dynamic_cast<IIfcArbitraryProfileDefWithVoids^>(profile))
 			{
@@ -443,7 +442,7 @@ namespace Xbim
 					polyMaker.Add(pointSeq.Value(i));
 
 				}
-				if (isClosed)
+				if (isClosed || close)
 					polyMaker.Close();
 
 				if (polyMaker.IsDone())
@@ -854,6 +853,10 @@ namespace Xbim
 			TopoDS_Wire resultWire;
 			builder.MakeWire(resultWire);
 
+			//Each composite segment does not need to be forced to closed.
+			XbimConstraints segmentConstraints = constraints & ~XbimConstraints::Closed;
+
+
 			for each (IIfcCompositeCurveSegment ^ seg in cCurve->Segments) //every segment shall be a bounded curve
 			{
 				bool lastSeg = (segIdx == segCount);
@@ -867,7 +870,7 @@ namespace Xbim
 
 				if (lastSeg && seg->Transition == IfcTransitionCode::DISCONTINUOUS) isContinuous = false;
 
-				XbimWire^ xbimWire = gcnew XbimWire(seg, logger, constraints);
+				XbimWire^ xbimWire = gcnew XbimWire(seg, logger, segmentConstraints);
 				if (xbimWire->IsValid)
 				{
 					TopoDS_Wire segWire = xbimWire;
@@ -1525,6 +1528,9 @@ namespace Xbim
 				return Init((IIfcCraneRailAShapeProfileDef^)profile);*/
 			else if (dynamic_cast<IIfcEllipseProfileDef^>(profile))
 				return Init((IIfcEllipseProfileDef^)profile, logger, constraints);
+			else if (dynamic_cast<IIfcTrapeziumProfileDef^>(profile)) {
+				return Init((IIfcTrapeziumProfileDef^)profile, logger, constraints);
+			}
 			else
 				XbimGeometryCreator::LogError(logger, profile, "Profile type {0} is not implemented", profile->GetType()->Name);
 		}
@@ -1845,6 +1851,34 @@ namespace Xbim
 			*pWire = wire;
 		}
 
+		void XbimWire::Init(IIfcTrapeziumProfileDef^ profile, ILogger^ /*logger*/, XbimConstraints /*constraints*/) {
+			double botxOff = profile->BottomXDim/ 2;
+			double yOff = profile->YDim / 2;
+			double precision = profile->Model->ModelFactors->Precision;
+			gp_Pnt bl(-botxOff, -yOff, 0);
+			gp_Pnt br(botxOff, -yOff, 0);
+			gp_Pnt tr(-botxOff + profile->TopXOffset + profile->TopXDim, yOff, 0);
+			gp_Pnt tl(-botxOff + profile->TopXOffset, yOff, 0);
+			Handle(Geom_TrimmedCurve) aSeg1 = GC_MakeSegment(bl, br);
+			Handle(Geom_TrimmedCurve) aSeg2 = GC_MakeSegment(br, tr);
+			Handle(Geom_TrimmedCurve) aSeg3 = GC_MakeSegment(tr, tl);
+			Handle(Geom_TrimmedCurve) aSeg4 = GC_MakeSegment(tl, bl);
+			TopoDS_Edge e1 = BRepBuilderAPI_MakeEdge(aSeg1);
+			TopoDS_Edge e2 = BRepBuilderAPI_MakeEdge(aSeg2);
+			TopoDS_Edge e3 = BRepBuilderAPI_MakeEdge(aSeg3);
+			TopoDS_Edge e4 = BRepBuilderAPI_MakeEdge(aSeg4);
+			TopoDS_Wire wire = BRepBuilderAPI_MakeWire(e1, e2, e3, e4);
+			ShapeFix_ShapeTolerance tol;
+			//set the correct precision
+			tol.LimitTolerance(wire, precision);
+			//apply the position transformation
+			if (profile->Position != nullptr)
+				wire.Move(XbimConvert::ToLocation(profile->Position));
+			pWire = new TopoDS_Wire();
+			*pWire = wire;
+		}
+
+
 		// SRL: Builds a wire from a composite IfcCraneRailFShapeProfileDef
 		//TODO: SRL: Support for fillet radii needs to be added, nb set the hascurves=true when added
 		// and note too that this will decrease performance due to use of OCC for triangulation
@@ -1949,7 +1983,6 @@ namespace Xbim
 		//	pWire = new TopoDS_Wire();
 		//	*pWire = wire;
 		//}
-
 		// SRL: Builds a wire from a composite IfcEllipseProfileDef
 		//TODO: SRL: Support for fillet radii needs to be added, nb set the hascurves=true when added
 		// and note too that this will decrease performance due to use of OCC for triangulation

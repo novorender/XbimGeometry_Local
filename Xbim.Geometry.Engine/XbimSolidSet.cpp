@@ -596,21 +596,21 @@ namespace Xbim
 				}
 				//unify the shape
 
-				
-				ShapeUpgrade_UnifySameDomain unifier(result);
-				//unifier.SetAngularTolerance(0.00174533); //1 tenth of a degree
-				unifier.SetLinearTolerance(tolerance);
-				
-				try
-				{
-					//sometimes unifier crashes
-					unifier.Build();
-					result =unifier.Shape();
-				}
-				catch (...) //any failure
-				{
-					//default to what we had					
-				}
+				//A lot of issues with the ShapeUpgrade_UnifySameDomain in older OCCT. Will not use
+				// 				//ShapeUpgrade_UnifySameDomain unifier(result);
+				////unifier.SetAngularTolerance(0.00174533); //1 tenth of a degree
+				//unifier.SetLinearTolerance(tolerance);
+				//
+				//try
+				//{
+				//	//sometimes unifier crashes
+				//	unifier.Build();
+				//	result =unifier.Shape();
+				//}
+				//catch (...) //any failure
+				//{
+				//	//default to what we had					
+				//}
 				return retVal;
 			}
 			catch (Standard_NotImplemented) //User break most likely called
@@ -1168,7 +1168,7 @@ namespace Xbim
 			}
 		}
 
-		XbimSolidSet^ XbimSolidSet::BuildBooleanResult(IIfcBooleanResult^ boolRes, IfcBooleanOperator operatorType, XbimSolidSet^ ops, ILogger^ logger)
+		XbimSolidSet^ XbimSolidSet::BuildBooleanResult(IIfcBooleanResult^ boolRes, IfcBooleanOperator operatorType, XbimSolidSet^ ops, XbimSolidSet^ halfspaceOps, bool cutOp, ILogger^ logger)
 		{
 			XbimSolidSet^ right = gcnew XbimSolidSet(boolRes->SecondOperand, logger);
 			if (right->IsValid)
@@ -1176,8 +1176,10 @@ namespace Xbim
 				right->IfcEntityLabel = boolRes->SecondOperand->EntityLabel;
 				if (!ops->_useBoundingBoxesToCut) {
 					if (IIfcFacetedBrep^ faceSet = dynamic_cast<IIfcFacetedBrep^>(boolRes->SecondOperand)) {
-						ops->_useBoundingBoxesToCut = ops->Count > 10 &&  faceSet->Outer->CfsFaces->Count > 10;
-						XbimGeometryCreator::LogError(logger, boolRes->SecondOperand, "Large number of faces in set for boolean operation, using bounding box");
+						ops->_useBoundingBoxesToCut = ops->Count > 15 &&  faceSet->Outer->CfsFaces->Count > 15;
+						if (ops->_useBoundingBoxesToCut) {
+							XbimGeometryCreator::LogError(logger, boolRes->SecondOperand, "Large number of faces in set for boolean operation, using bounding box");
+						}
 					}
 				}
 				//if () {
@@ -1200,7 +1202,16 @@ namespace Xbim
 				////}
 				////else 
 				{
-					ops->Add(right);
+
+					if (cutOp &&
+						(dynamic_cast<IIfcHalfSpaceSolid^>(boolRes->SecondOperand) && boolRes->SecondOperand->GetType()->Name->Contains("IfcHalfSpaceSolid") ||
+						dynamic_cast<IIfcPolygonalBoundedHalfSpace^>(boolRes->SecondOperand) && boolRes->SecondOperand->GetType()->Name->Contains("IfcPolygonalBoundedHalfSpace")))
+					{
+						halfspaceOps->Add(right);
+					}
+					else {
+						ops->Add(right);
+					}
 				}
 			}
 
@@ -1213,13 +1224,14 @@ namespace Xbim
 				secondOpResult = dynamic_cast<IIfcHalfSpaceSolid^>(booleanResult->SecondOperand);*/
 			if (booleanResult!=nullptr && clippingResult==nullptr && booleanResult->Operator== operatorType /*&& secondOpResult==nullptr*/)
 			{
-				return BuildBooleanResult((IIfcBooleanResult^)(boolRes->FirstOperand), operatorType, ops, logger);
+				return BuildBooleanResult((IIfcBooleanResult^)(boolRes->FirstOperand), operatorType, ops, halfspaceOps, cutOp, logger);
 			}
 			else
 			{
 				XbimSolidSet^ left = gcnew XbimSolidSet(boolRes->FirstOperand, logger);
 				left->IfcEntityLabel = boolRes->FirstOperand->EntityLabel;
 				ops->Reverse();
+				halfspaceOps->Reverse();
 				left->_useBoundingBoxesToCut = ops->_useBoundingBoxesToCut;
 				return left;
 			}
@@ -1239,8 +1251,10 @@ namespace Xbim
 			//XbimSolidSet^ left = gcnew XbimSolidSet(boolOp->FirstOperand, logger);
 			//left->IfcEntityLabel = boolOp->FirstOperand->EntityLabel;
 			XbimSolidSet^ right = gcnew XbimSolidSet();
+			XbimSolidSet^ halfSpaces = gcnew XbimSolidSet();
 			right->IfcEntityLabel = boolOp->SecondOperand->EntityLabel;
-			XbimSolidSet^ left = BuildBooleanResult(boolOp, boolOp->Operator, right, logger);
+			//Same hack as clipping with halfspaces
+			XbimSolidSet^ left = BuildBooleanResult(boolOp, boolOp->Operator, right, halfSpaces, boolOp->Operator == IfcBooleanOperator::DIFFERENCE, logger);
 
 			solids = gcnew List<IXbimSolid^>();
 
@@ -1273,7 +1287,15 @@ namespace Xbim
 					result = left->Intersection(right, mf->Precision, logger);
 					break;
 				case IfcBooleanOperator::DIFFERENCE:
-					result = left->Cut(right, mf->Precision, logger);
+				{
+					for each (IXbimSolid ^ hs in halfSpaces) {
+						left = (XbimSolidSet^)left->Cut(hs, mf->Precision, logger);
+					}
+					for each (IXbimSolid ^ s in right) {
+						left = (XbimSolidSet^)left->Cut(s, mf->Precision, logger);
+					}
+					result = left;
+				}
 					break;
 				}
 				//XbimOccWriter::Write(result, "c:/tmp/bop" + boolOp->ToString()->Replace(";","") +".txt");

@@ -559,13 +559,21 @@ namespace Xbim
 						{
 							array<ContourVertex>^ contour = gcnew array<ContourVertex>(numberOfEdges);
 							BRepTools_WireExplorer exp(ccWire, face);
-							for (int j = 0; exp.More(); exp.Next())
+							int j = 0;
+							for (; exp.More(); exp.Next())
 							{
 								gp_Pnt p = BRep_Tool::Pnt(exp.CurrentVertex());
 								contour[j].Position.X = p.X();
 								contour[j].Position.Y = p.Y();
 								contour[j].Position.Z = p.Z();
 								j++;
+							}
+							if (j != numberOfEdges) {
+								array<ContourVertex>^ old = contour;
+								contour = gcnew array<ContourVertex>(j);
+								for (int k = 0; k < j; ++k) {
+									contour[k] = old[k];
+								}
 							}
 							tess->AddContour(contour); //the original winding is correct as we have oriented the wire to the face in BRepTools_WireExplorer
 						}
