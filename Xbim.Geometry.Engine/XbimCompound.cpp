@@ -513,11 +513,11 @@ namespace Xbim
 
 		void XbimCompound::Init(IIfcFacetedBrep^ solid, ILogger^ logger)
 		{
-			if (solid->Outer->CfsFaces->Count < 4) // if we have 3 or less planar faces it cannot form a valid solid
-			{
-				XbimGeometryCreator::LogWarning(logger, solid, "IfcFacetedBrep has less than 4 planar faces it cannot be a correct closed shell");
-				return;
-			}
+			//if (solid->Outer->CfsFaces->Count < 4) // if we have 3 or less planar faces it cannot form a valid solid
+			//{
+			//	XbimGeometryCreator::LogWarning(logger, solid, "IfcFacetedBrep has less than 4 planar faces it cannot be a correct closed shell");
+			//	return;
+			//}
 
 			IIfcFacetedBrepWithVoids^ facetedBrepWithVoids = dynamic_cast<IIfcFacetedBrepWithVoids^>(solid);
 			if (facetedBrepWithVoids != nullptr) return Init(facetedBrepWithVoids, logger);
