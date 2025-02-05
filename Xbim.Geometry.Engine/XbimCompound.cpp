@@ -1370,6 +1370,9 @@ namespace Xbim
 				TopTools_SequenceOfShape innerLoops;
 				HashSet<int>^ outerIds = gcnew HashSet<int>();
 
+				auto indexedFace = dynamic_cast<IIfcIndexedPolygonalFace^>(ifcFace);
+
+
 				for each (IIfcFaceBound ^ bound in ifcFace->Bounds)
 				{
 
@@ -1398,12 +1401,15 @@ namespace Xbim
 					{
 						try
 						{
-							if (isOuter) {
-								outerIds->Add(cp->EntityLabel);
+							if (indexedFace != nullptr) {
+								if (isOuter) {
+									outerIds->Add(cp->EntityLabel);
+								}
+								else if (outerIds->Contains(cp->EntityLabel)) {
+									continue;
+								}
 							}
-							else if (outerIds->Contains(cp->EntityLabel)) {
-								continue;
-							}
+
 							gp_Pnt p = XbimConvert::GetPoint3d(cp);
 							inspector.ClearResList();
 							inspector.SetCurrent(p.Coord());
