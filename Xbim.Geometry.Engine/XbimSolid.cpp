@@ -1735,8 +1735,8 @@ namespace Xbim
 					return wire;
 			}
 			else if (dynamic_cast<IIfcPolyline^>(basisCurve) &&
-				(double)startParam.Value == 0. &&
-				(double)endParam.Value == 1. &&
+				((double)startParam.Value != 0. ||
+				(double)endParam.Value != 1.) &&
 				directrix->Model->ModelFactors->ApplyWorkAround(XbimGeometryCreator::PolylineTrimLengthOneForEntireLine)) //consider work around for incorrectly set trims
 			{
 				startPar = startParam.Value;
